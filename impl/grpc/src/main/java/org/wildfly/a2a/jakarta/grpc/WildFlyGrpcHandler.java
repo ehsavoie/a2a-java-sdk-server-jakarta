@@ -6,6 +6,7 @@ import java.util.function.Supplier;
 
 import org.a2aproject.sdk.jsonrpc.common.wrappers.ListTasksResult;
 import org.a2aproject.sdk.server.ServerCallContext;
+import org.a2aproject.sdk.server.auth.TaskOperation;
 import org.a2aproject.sdk.server.requesthandlers.RequestHandler;
 import org.a2aproject.sdk.spec.A2AError;
 import org.a2aproject.sdk.spec.AgentCard;
@@ -176,9 +177,9 @@ public class WildFlyGrpcHandler extends GrpcHandler {
         }
 
         @Override
-        public void validateRequestedTask(String requestedTaskId) throws A2AError {
+        public void authorizeTaskAccess(String requestedTaskId, ServerCallContext context, TaskOperation operation) throws A2AError {
             withDeploymentClassLoader(() -> {
-                delegate.validateRequestedTask(requestedTaskId);
+                delegate.authorizeTaskAccess(requestedTaskId, context, operation);
                 return null;
             });
         }

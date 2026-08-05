@@ -50,6 +50,7 @@ import org.a2aproject.sdk.jsonrpc.common.wrappers.SendStreamingMessageRequest;
 import org.a2aproject.sdk.jsonrpc.common.wrappers.StreamingJSONRPCRequest;
 import org.a2aproject.sdk.jsonrpc.common.wrappers.SubscribeToTaskRequest;
 import org.a2aproject.sdk.server.ServerCallContext;
+import org.a2aproject.sdk.server.auth.TaskOperation;
 import org.a2aproject.sdk.server.auth.UnauthenticatedUser;
 import org.a2aproject.sdk.server.auth.User;
 import org.a2aproject.sdk.server.extensions.A2AExtensions;
@@ -138,7 +139,7 @@ public class A2AServerResourceDelegate {
         A2ARequest<?> request = null;
         try {
             request = JSONRPCUtils.parseRequestBody(body, null);
-            validateStreamingRequest((StreamingJSONRPCRequest<?>) request);
+            validateStreamingRequest((StreamingJSONRPCRequest<?>) request, context);
         } catch (A2AError e) {
             LOGGER.debug("A2AError validating streaming request: {}", e.getMessage());
             sendJsonRpcError(response, request != null ? request.getId() : null, e);
@@ -249,11 +250,13 @@ public class A2AServerResourceDelegate {
         }
     }
 
-    private void validateStreamingRequest(StreamingJSONRPCRequest<?> request) throws A2AError {
+    private void validateStreamingRequest(StreamingJSONRPCRequest<?> request, ServerCallContext context) throws A2AError {
         if (request instanceof SendStreamingMessageRequest req) {
-            jsonRpcHandler.validateRequestedTask(req.getParams().message().taskId());
+            jsonRpcHandler.authorizeTaskAccess(req.getParams().message().taskId(), context,
+                    TaskOperation.MESSAGE_SEND_STREAM);
         } else if (request instanceof SubscribeToTaskRequest req) {
-            jsonRpcHandler.validateRequestedTask(req.getParams().id());
+            jsonRpcHandler.authorizeTaskAccess(req.getParams().id(), context,
+                    TaskOperation.SUBSCRIBE_TO_TASK);
         }
     }
 
