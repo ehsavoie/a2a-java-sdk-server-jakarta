@@ -56,7 +56,7 @@
         <version.org.jboss.arquillian.jakarta>10.0.0.Final</version.org.jboss.arquillian.jakarta>
         <version.shrinkwrap.resolvers>3.3.4</version.shrinkwrap.resolvers>
         <version.rest-assured>5.5.5</version.rest-assured>
-        <version.wildfly.grpc>0.2.0.Final</version.wildfly.grpc>
+        <version.wildfly.grpc>0.2.1.Final</version.wildfly.grpc>
 
         <arquillian.java.vm.args></arquillian.java.vm.args>
         <server.debug.port>8787</server.debug.port>
