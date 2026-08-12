@@ -69,20 +69,10 @@
         <!-- Redirect test output to file -->
         <maven.test.redirectTestOutputToFile>true</maven.test.redirectTestOutputToFile>
 
-        <!--
-            Configure the repositories on JBoss Nexus we want to push to
-        -->
-        <!-- Configure this one in settings.xml - it contains the tokens to deploy to nexus -->
-        <nexus.serverId>jboss</nexus.serverId>
-        <nexus.repository.release>wildfly-extras</nexus.repository.release>
-        <nexus.repository.staging>wildfly-extras-staging</nexus.repository.staging>
-        <nexus.staging.tag>a2a-jakarta-${project.version}</nexus.staging.tag>
-
-        <!--
-            URL of Maven repository to deploy to. There is a -Pstaging-deploy profile to push to a
-            staging repository instead.
-        -->
-        <maven.repository.url>https://repository.jboss.org/nexus/repository/wildfly-extras/</maven.repository.url>
+        <!-- Maven Central publishing -->
+        <sonatype-central-publishing-plugin.version>0.11.0</sonatype-central-publishing-plugin.version>
+        <release.auto.publish>false</release.auto.publish>
+        <central.publishing.skip>false</central.publishing.skip>
 
         <!-- Plugin versions, not managed by parent -->
         <version.plugin.wildfly-glow-arquillian>1.4.1.Final</version.plugin.wildfly-glow-arquillian>
@@ -287,8 +277,38 @@
                             </execution>
                     </executions>
                 </plugin>
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>${sonatype-central-publishing-plugin.version}</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <publishingServerId>central</publishingServerId>
+                        <autoPublish>${release.auto.publish}</autoPublish>
+                        <skipPublishing>${central.publishing.skip}</skipPublishing>
+                    </configuration>
+                </plugin>
+                <!-- Neutralize the nxrm3-maven-plugin inherited from jboss-parent's
+                     jboss-release profile so it never runs even if that profile is
+                     accidentally activated -->
+                <plugin>
+                    <groupId>org.sonatype.plugins</groupId>
+                    <artifactId>nxrm3-maven-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <id>nexus-deploy</id>
+                            <phase>none</phase>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
     <modules>
         <module>examples</module>
@@ -310,11 +330,23 @@
             </properties>
         </profile>
         <profile>
-            <!-- Do a "dry run" by deploying to the staging repository -->
-            <id>staging-deploy</id>
-            <properties>
-                <maven.repository.url>https://repository.jboss.org/nexus/repository/wildfly-extras-staging/</maven.repository.url>
-            </properties>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 

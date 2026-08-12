@@ -17,6 +17,10 @@
     <name>WildFly Extras - A2A Jakarta - TCK - WildFly Jar</name>
     <description>Java SDK for the Agent2Agent Protocol (A2A) - SDK - Jakarta - TCK - WildFly Jar</description>
 
+    <properties>
+        <central.publishing.skip>true</central.publishing.skip>
+    </properties>
+
     <dependencies>
         <!--
             Dependencies needed to build the application.

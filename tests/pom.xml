@@ -17,24 +17,9 @@
     <name>WildFly Extras - A2A Jakarta - Tests - Parent</name>
     <description>Java SDK for the Agent2Agent Protocol (A2A) - SDK - Jakarta - Tests - Parent</description>
 
-    <build>
-        <plugins>
-           <plugin>
-               <!--
-                    Disable the nxrm3 plugin for the test modules so that they don't get deployed.
-                    Otherwise, we get errors on validation due to missing sources + javadoc.
-                -->
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nxrm3-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>nexus-deploy</id>
-                        <phase>none</phase>
-                    </execution>
-                </executions>
-           </plugin>
-        </plugins>
-    </build>
+    <properties>
+        <central.publishing.skip>true</central.publishing.skip>
+    </properties>
     <modules>
         <module>common</module>
         <module>jsonrpc</module>

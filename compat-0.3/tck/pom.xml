@@ -18,6 +18,10 @@
     <name>WildFly Extras - A2A Jakarta - v0.3 Compat - TCK - WildFly Jar</name>
     <description>Java SDK for the Agent2Agent Protocol (A2A) - SDK - Jakarta - v0.3 Compat - TCK - WildFly Jar</description>
 
+    <properties>
+        <central.publishing.skip>true</central.publishing.skip>
+    </properties>
+
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
