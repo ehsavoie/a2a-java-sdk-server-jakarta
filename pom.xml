@@ -286,6 +286,7 @@
                         <publishingServerId>central</publishingServerId>
                         <autoPublish>${release.auto.publish}</autoPublish>
                         <skipPublishing>${central.publishing.skip}</skipPublishing>
+                        <deploymentName>a2a-jakarta-${project.version}</deploymentName>
                     </configuration>
                 </plugin>
                 <!-- Neutralize the nxrm3-maven-plugin inherited from jboss-parent's
