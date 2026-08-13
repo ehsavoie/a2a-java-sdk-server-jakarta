@@ -1,4 +1,4 @@
-name: Build with '-Prelease' (Trigger)
+name: Build with '-Pcentral-release' (Trigger)
 
 # Trigger workflow for release profile build verification.
 # This workflow runs on PRs and uploads the PR info for the workflow_run job.
@@ -37,10 +37,10 @@ jobs:
       - name: Build with release profile (no secrets)
         run: >
           mvn -B install
-          -Prelease
+          -Pcentral-release
           -DskipTests
           -Dgpg.skip=true
-          -Drelease.auto.publish=false
+          -Dcentral.autoPublish=false
 
       - name: Prepare PR info
         run: |

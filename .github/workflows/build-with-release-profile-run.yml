@@ -1,4 +1,4 @@
-name: Build with '-Prelease' (Run)
+name: Build with '-Pcentral-release' (Run)
 
 # Workflow_run job for release profile build verification.
 # This workflow has access to secrets and runs the actual build.
@@ -7,7 +7,7 @@ name: Build with '-Prelease' (Run)
 
 on:
   workflow_run:
-    workflows: ["Build with '-Prelease' (Trigger)"]
+    workflows: ["Build with '-Pcentral-release' (Trigger)"]
     types:
       - completed
 
@@ -68,7 +68,7 @@ jobs:
               repo: context.repo.repo,
               sha: '${{ steps.pr_info.outputs.pr_sha }}',
               state: 'pending',
-              context: 'Build with -Prelease',
+              context: 'Build with -Pcentral-release',
               description: 'Building with release profile...',
               target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
             });
@@ -117,9 +117,8 @@ jobs:
         run: >
           mvn -B install
           -s ~/.m2/settings.xml
-          -P release
+          -Pcentral-release
           -DskipTests
-          -Drelease.auto.publish=true
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_SIGNING_PASSPHRASE }}
 
@@ -153,7 +152,7 @@ jobs:
               repo: context.repo.repo,
               sha: '${{ steps.pr_info.outputs.pr_sha }}',
               state: state,
-              context: 'Build with -Prelease',
+              context: 'Build with -Pcentral-release',
               description: description,
               target_url: 'https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}'
             });

@@ -18,7 +18,7 @@
     <description>Java SDK for the Agent2Agent Protocol (A2A) - SDK - Jakarta - TCK - WildFly Jar</description>
 
     <properties>
-        <central.publishing.skip>true</central.publishing.skip>
+        <central.skipPublishing>true</central.skipPublishing>
     </properties>
 
     <dependencies>
@@ -98,19 +98,6 @@
     </dependencies>
     <build>
         <plugins>
-            <plugin>
-                <!--
-                    Disable the nxrm3 plugin so that this module doesn't get deployed.
-                -->
-                <groupId>org.sonatype.plugins</groupId>
-                <artifactId>nxrm3-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>nexus-deploy</id>
-                        <phase>none</phase>
-                    </execution>
-                </executions>
-            </plugin>
             <!--
                 WildFly specific plugin to provision a WildFly server with the functionality required to
                 run our .war file.

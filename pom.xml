@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.jboss</groupId>
         <artifactId>jboss-parent</artifactId>
-        <version>50</version>
+        <version>53</version>
     </parent>
 
     <groupId>org.wildfly.a2a</groupId>
@@ -62,17 +62,15 @@
         <server.debug.port>8787</server.debug.port>
 
         <!-- maven-compiler-plugin settings -->
+        <jdk.min.version>17</jdk.min.version>
         <maven.compiler.release>17</maven.compiler.release>
-        <maven.compiler.source>${maven.compiler.release}</maven.compiler.source>
-        <maven.compiler.target>${maven.compiler.release}</maven.compiler.target>
 
         <!-- Redirect test output to file -->
         <maven.test.redirectTestOutputToFile>true</maven.test.redirectTestOutputToFile>
 
-        <!-- Maven Central publishing -->
-        <sonatype-central-publishing-plugin.version>0.11.0</sonatype-central-publishing-plugin.version>
-        <release.auto.publish>false</release.auto.publish>
-        <central.publishing.skip>false</central.publishing.skip>
+        <!-- Maven Central publishing (overrides for jboss-parent's central-release profile) -->
+        <!-- Use reactor root name for multi-module deploymentName (fixed in jboss-parent 54) -->
+        <central.deploymentName>${session.topLevelProject.artifactId}-${session.topLevelProject.version}</central.deploymentName>
 
         <!-- Plugin versions, not managed by parent -->
         <version.plugin.wildfly-glow-arquillian>1.4.1.Final</version.plugin.wildfly-glow-arquillian>
@@ -240,76 +238,8 @@
                         </systemPropertyVariables>
                     </configuration>
                 </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-source-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <id>attach-sources</id>
-                            <goals>
-                                <goal>jar-no-fork</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-javadoc-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <id>attach-javadocs</id>
-                            <goals>
-                                <goal>jar</goal>
-                            </goals>
-                        </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.apache.maven.plugins</groupId>
-                    <artifactId>maven-gpg-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <id>sign-artifacts</id>
-                            <phase>verify</phase>
-                            <goals>
-                                <goal>sign</goal>
-                            </goals>
-                            </execution>
-                    </executions>
-                </plugin>
-                <plugin>
-                    <groupId>org.sonatype.central</groupId>
-                    <artifactId>central-publishing-maven-plugin</artifactId>
-                    <version>${sonatype-central-publishing-plugin.version}</version>
-                    <extensions>true</extensions>
-                    <configuration>
-                        <publishingServerId>central</publishingServerId>
-                        <autoPublish>${release.auto.publish}</autoPublish>
-                        <skipPublishing>${central.publishing.skip}</skipPublishing>
-                        <deploymentName>a2a-jakarta-${project.version}</deploymentName>
-                    </configuration>
-                </plugin>
-                <!-- Neutralize the nxrm3-maven-plugin inherited from jboss-parent's
-                     jboss-release profile so it never runs even if that profile is
-                     accidentally activated -->
-                <plugin>
-                    <groupId>org.sonatype.plugins</groupId>
-                    <artifactId>nxrm3-maven-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <id>nexus-deploy</id>
-                            <phase>none</phase>
-                        </execution>
-                    </executions>
-                </plugin>
             </plugins>
         </pluginManagement>
-        <plugins>
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
     </build>
     <modules>
         <module>examples</module>
@@ -329,25 +259,6 @@
             <properties>
                 <arquillian.java.vm.args>-agentlib:jdwp=transport=dt_socket,address=*:${server.debug.port},server=y,suspend=y</arquillian.java.vm.args>
             </properties>
-        </profile>
-        <profile>
-            <id>release</id>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-source-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-javadoc-plugin</artifactId>
-                    </plugin>
-                    <plugin>
-                        <groupId>org.apache.maven.plugins</groupId>
-                        <artifactId>maven-gpg-plugin</artifactId>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
     </profiles>
 
