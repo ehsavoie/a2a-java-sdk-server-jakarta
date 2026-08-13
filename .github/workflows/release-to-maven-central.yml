@@ -38,8 +38,7 @@ jobs:
         run: >
           mvn -B deploy
           -s ~/.m2/settings.xml
-          -P release
+          -Pcentral-release
           -DskipTests
-          -Drelease.auto.publish=true
         env:
           GPG_PASSPHRASE: ${{ secrets.GPG_SIGNING_PASSPHRASE }}

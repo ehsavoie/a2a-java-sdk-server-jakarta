@@ -18,7 +18,7 @@
     <description>Java SDK for the Agent2Agent Protocol (A2A) - SDK - Jakarta - Tests - Parent</description>
 
     <properties>
-        <central.publishing.skip>true</central.publishing.skip>
+        <central.skipPublishing>true</central.skipPublishing>
     </properties>
     <modules>
         <module>common</module>

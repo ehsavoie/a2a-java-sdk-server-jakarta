@@ -79,7 +79,7 @@ git push upstream v1.0.0.Final
 Pushing the tag triggers the `release-to-maven-central.yml` workflow which:
 1. Detects tag (pattern: `v?[0-9]+.[0-9]+.[0-9]+*`)
 2. Checks out the tagged commit
-3. Builds with `-Prelease -DskipTests`
+3. Builds with `-Pcentral-release -DskipTests`
 4. Signs all artifacts with GPG
 5. Deploys to Maven Central with auto-publish
 
@@ -158,6 +158,17 @@ Follow semantic versioning with qualifiers:
 - **-SNAPSHOT** - Development versions (e.g., `1.0.1.Final-SNAPSHOT`)
 
 ## Workflows Reference
+
+### build-with-release-profile.yml (Tier 1 - Trigger)
+- **Triggers**: All PRs, all pushes, manual dispatch
+- **Purpose**: Build with `-Pcentral-release` profile without secrets
+- **Catches**: Compilation, javadoc, plugin configuration issues
+
+### build-with-release-profile-run.yml (Tier 2 - Secrets)
+- **Triggers**: `workflow_run` on Tier 1 completion
+- **Purpose**: Full release profile build with GPG signing and Maven Central credential validation
+- **Access**: Allow-listed maintainers (`kkhan`, `jmesnil`, `ehsavoie`, `maeste`), pushes to `main`, manual dispatch
+- **Requires**: GPG and Maven Central secrets
 
 ### release-to-maven-central.yml
 - **Triggers**: Tags matching `v?[0-9]+.[0-9]+.[0-9]+*`

@@ -18,7 +18,7 @@
     <description>Integration Test Kit agent for cross-SDK interoperability testing on WildFly</description>
 
     <properties>
-        <central.publishing.skip>true</central.publishing.skip>
+        <central.skipPublishing>true</central.skipPublishing>
     </properties>
 
     <dependencies>
