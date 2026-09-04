@@ -107,7 +107,7 @@ public class A2ARestServerResourceDelegate {
                 LOGGER.info("REST sendMessageStreaming returning error: status={}", error.getStatusCode());
                 sendErrorResponse(httpResponse, error);
             } else {
-                handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse, context);
+                handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse);
                 LOGGER.info("REST sendMessageStreaming SSE stream ended");
             }
         }
@@ -131,7 +131,7 @@ public class A2ARestServerResourceDelegate {
                 LOGGER.info("REST resubscribeTask returning error for taskId={}: status={}, body={}", taskId, error.getStatusCode(), error.getBody());
                 sendErrorResponse(httpResponse, error);
             } else {
-                handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse, context);
+                handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse);
                 LOGGER.info("REST resubscribeTask SSE stream ended for taskId={}", taskId);
             }
         }
@@ -377,8 +377,7 @@ public class A2ARestServerResourceDelegate {
     }
 
     private void handleCustomSSEResponse(Flow.Publisher<String> publisher,
-            HttpServletResponse response,
-            ServerCallContext context) throws IOException {
+            HttpServletResponse response) throws IOException {
         response.setHeader(CONTENT_TYPE, MediaType.SERVER_SENT_EVENTS);
         response.setHeader("Cache-Control", "no-cache");
         response.setHeader("X-Accel-Buffering", "no");
@@ -387,7 +386,7 @@ public class A2ARestServerResourceDelegate {
         try (PrintWriter writer = response.getWriter()) {
             writer.write(": SSE stream started\n\n");
             writer.flush();
-            publisher.subscribe(new SSESubscriber(streamingComplete, writer, context));
+            publisher.subscribe(new SSESubscriber(streamingComplete, writer));
             streamingComplete.get();
         } catch (Exception e) {
             LOGGER.error("Error waiting for streaming completion: {}", e.getMessage(), e);

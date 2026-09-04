@@ -15,7 +15,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.a2aproject.sdk.server.ServerCallContext;
 import org.a2aproject.sdk.server.util.sse.SseFormatter;
 
 public class SSESubscriber implements Flow.Subscriber<String> {
@@ -39,12 +38,10 @@ public class SSESubscriber implements Flow.Subscriber<String> {
     private final AtomicLong eventId = new AtomicLong(0);
     private final CompletableFuture<Void> streamingComplete;
     private final PrintWriter writer;
-    private final ServerCallContext context;
 
-    public SSESubscriber(CompletableFuture<Void> streamingComplete, PrintWriter writer, ServerCallContext context) {
+    public SSESubscriber(CompletableFuture<Void> streamingComplete, PrintWriter writer) {
         this.streamingComplete = streamingComplete;
         this.writer = writer;
-        this.context = context;
     }
 
     public static void setStreamingIsSubscribedRunnable(Runnable streamingIsSubscribedRunnable) {
@@ -55,15 +52,18 @@ public class SSESubscriber implements Flow.Subscriber<String> {
     public void onSubscribe(Flow.Subscription subscription) {
         LOGGER.info("SSE onSubscribe: streaming started on thread={}", Thread.currentThread().getName());
         this.subscription = subscription;
+        // Schedule heartbeat BEFORE requesting events: request() may trigger
+        // synchronous onComplete, which calls cancelHeartbeat() — the future
+        // must already be assigned so it can be cancelled.
+        heartbeatFuture = HEARTBEAT_SCHEDULER.scheduleAtFixedRate(
+                this::heartbeat, HEARTBEAT_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
+
         // Request all events upfront (mirrors the a2a-java reference SseResponseWriter, see
         // a2a-java #906): a single-item demand window drops back-to-back emissions from the
         // EventConsumer. The EventConsumer's internal buffer (256 items) is the only bound, and
         // EventConsumer.BUFFER_FLUSH_DELAY_MS guarantees the final write is flushed before
         // onComplete fires — so write-level backpressure via request(1) is neither needed nor safe.
         subscription.request(Long.MAX_VALUE);
-
-        heartbeatFuture = HEARTBEAT_SCHEDULER.scheduleAtFixedRate(
-                this::heartbeat, HEARTBEAT_INTERVAL_MS, HEARTBEAT_INTERVAL_MS, TimeUnit.MILLISECONDS);
 
         // Notify tests that we are subscribed
         Runnable runnable = streamingIsSubscribedRunnable;
@@ -102,7 +102,10 @@ public class SSESubscriber implements Flow.Subscriber<String> {
     @Override
     public void onError(Throwable throwable) {
         LOGGER.info("SSE onError: {} on thread={}", throwable.getMessage(), Thread.currentThread().getName());
-        handleClientDisconnect();
+        cancelHeartbeat();
+        if (subscription != null) {
+            subscription.cancel();
+        }
         streamingComplete.completeExceptionally(throwable);
     }
 
@@ -119,12 +122,14 @@ public class SSESubscriber implements Flow.Subscriber<String> {
         }
         disconnected = true;
         cancelHeartbeat();
-        LOGGER.info("SSE handleClientDisconnect: client disconnected, cancelling subscription and EventConsumer on thread={}",
+        LOGGER.info("SSE handleClientDisconnect: client disconnected, cancelling subscription on thread={}",
                 Thread.currentThread().getName());
         if (subscription != null) {
             subscription.cancel();
         }
-        context.invokeEventConsumerCancelCallback();
+        // Do NOT cancel the EventConsumer here: the client may resubscribe, and the
+        // agent executor must keep running so events continue to buffer in the TaskStore.
+        // Task-level timeouts in the SDK handle cleanup if the client never comes back.
         streamingComplete.complete(null);
     }
 

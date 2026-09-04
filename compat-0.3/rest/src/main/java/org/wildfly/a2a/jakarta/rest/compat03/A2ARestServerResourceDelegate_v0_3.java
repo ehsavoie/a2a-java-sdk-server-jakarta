@@ -95,7 +95,7 @@ public class A2ARestServerResourceDelegate_v0_3 {
             if (error != null) {
                 sendErrorResponse(httpResponse, error);
             } else {
-                handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse, context);
+                handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse);
             }
         }
     }
@@ -180,7 +180,7 @@ public class A2ARestServerResourceDelegate_v0_3 {
             if (error != null) {
                 sendErrorResponse(httpResponse, error);
             } else {
-                handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse, context);
+                handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse);
             }
         }
     }
@@ -309,8 +309,7 @@ public class A2ARestServerResourceDelegate_v0_3 {
     }
 
     private void handleCustomSSEResponse(Flow.Publisher<String> publisher,
-            HttpServletResponse response,
-            ServerCallContext context) throws IOException {
+            HttpServletResponse response) throws IOException {
         response.setHeader(CONTENT_TYPE, MediaType.SERVER_SENT_EVENTS);
         response.setHeader("Cache-Control", "no-cache");
         response.setHeader("X-Accel-Buffering", "no");
@@ -319,7 +318,7 @@ public class A2ARestServerResourceDelegate_v0_3 {
         try (PrintWriter writer = response.getWriter()) {
             writer.write(": SSE stream started\n\n");
             writer.flush();
-            publisher.subscribe(new SSESubscriber(streamingComplete, writer, context));
+            publisher.subscribe(new SSESubscriber(streamingComplete, writer));
             streamingComplete.get();
         } catch (Exception e) {
             LOGGER.error("Error waiting for streaming completion: {}", e.getMessage(), e);

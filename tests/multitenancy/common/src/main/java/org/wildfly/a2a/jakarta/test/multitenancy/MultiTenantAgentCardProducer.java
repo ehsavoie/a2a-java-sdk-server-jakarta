@@ -21,20 +21,20 @@ public class MultiTenantAgentCardProducer {
     @Produces
     @PublicAgentCard
     public AgentCard publicCard() {
-        return card("Multi-Tenant Test Agent", BASE_URL, true);
+        return card("Multi-Tenant Test Agent", null, BASE_URL, true);
     }
 
     @Produces
     @ExtendedAgentCard
     public AgentCard defaultExtendedCard() {
-        return card("default-extended", BASE_URL, false);
+        return card("default-extended", null, BASE_URL, false);
     }
 
     @Produces
     @Tenant("acme")
     @ExtendedAgentCard
     public AgentCard acmeExtendedCard() {
-        return card("acme-extended", BASE_URL + "/acme", false);
+        return card("acme-extended", "acme", BASE_URL + "/acme", false);
     }
 
     // Tenant public cards carry ONLY @Tenant (no @PublicAgentCard) — CdiAgentCardRouter
@@ -42,23 +42,24 @@ public class MultiTenantAgentCardProducer {
     @Produces
     @Tenant("acme")
     public AgentCard acmePublicCard() {
-        return card("Acme Agent", BASE_URL + "/acme", true);
+        return card("Acme Agent", "acme", BASE_URL + "/acme", true);
     }
 
     @Produces
     @Tenant("beta")
     @ExtendedAgentCard
     public AgentCard betaExtendedCard() {
-        return card("beta-extended", BASE_URL + "/beta", false);
+        return card("beta-extended", "beta", BASE_URL + "/beta", false);
     }
 
     @Produces
     @Tenant("beta")
     public AgentCard betaPublicCard() {
-        return card("Beta Agent", BASE_URL + "/beta", true);
+        return card("Beta Agent", "beta", BASE_URL + "/beta", true);
     }
 
-    private static AgentCard card(String name, String httpUrl, boolean withCapabilities) {
+    private static AgentCard card(String name, String tenant, String httpUrl, boolean withCapabilities) {
+        String jsonrpcUrl = tenant != null ? BASE_URL + "/" + tenant : BASE_URL;
         AgentCapabilities capabilities = withCapabilities
                 ? AgentCapabilities.builder().streaming(true).extendedAgentCard(true).build()
                 : AgentCapabilities.builder().build();
@@ -71,7 +72,7 @@ public class MultiTenantAgentCardProducer {
                 .capabilities(capabilities)
                 .skills(List.of())
                 .supportedInterfaces(List.of(
-                        new AgentInterface(TransportProtocol.JSONRPC.asString(), BASE_URL),
+                        new AgentInterface(TransportProtocol.JSONRPC.asString(), jsonrpcUrl),
                         new AgentInterface(TransportProtocol.HTTP_JSON.asString(), httpUrl)))
                 .build();
     }
