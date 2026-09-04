@@ -72,13 +72,11 @@ public class A2ARestServerResource_v0_3 {
 
     @POST
     @Path("tasks/{taskId}:cancel")
-    @Consumes(MediaType.APPLICATION_JSON)
     public Response cancelTask(@PathParam("taskId") String taskId, @Context HttpServletRequest httpRequest, @Context SecurityContext securityContext) {
         return getDelegate().cancelTask(taskId, httpRequest, securityContext);
     }
 
     @POST
-    @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.SERVER_SENT_EVENTS)
     @Path("tasks/{taskId}:subscribe")
     public void resubscribeTask(@PathParam("taskId") String taskId, @Context HttpServletRequest httpRequest, @Context HttpServletResponse httpResponse, @Context SecurityContext securityContext) throws IOException {
