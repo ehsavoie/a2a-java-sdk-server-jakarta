@@ -33,6 +33,9 @@ public class A2ARestVersionRoutingFilter implements ContainerRequestFilter {
     @Inject
     Instance<A2AVersionProvider> allVersionProviders;
 
+    @Inject
+    TenantHolder tenantHolder;
+
     private volatile boolean initialized;
     private A2AVersionResolver versionResolver;
     private Set<String> knownRestBasePaths;
@@ -80,16 +83,19 @@ public class A2ARestVersionRoutingFilter implements ContainerRequestFilter {
             return;
         }
 
+        String tenant = A2ARequestAttributes.extractTenant(path);
+        if (!tenant.isEmpty() && !startsWithKnownRestBasePath(path)) {
+            requestContext.setProperty(A2ARequestAttributes.A2A_TENANT_ATTR, tenant);
+            tenantHolder.setTenant(tenant);
+            String stripped = path.startsWith("/") ? path.substring(1) : path;   // "acme/message:send"
+            stripped = stripped.substring(tenant.length());                      // "/message:send" (or "")
+            path = stripped.isEmpty() ? "/" : stripped;                          // normalize
+        }
+
         String versionHeader = requestContext.getHeaderString(A2AHeaders.A2A_VERSION);
 
         if (versionHeader == null) {
-            boolean matchesKnownPath = false;
-            for (String basePath : knownRestBasePaths) {
-                if (!basePath.equals("/") && (path.startsWith(basePath + "/") || path.equals(basePath))) {
-                    matchesKnownPath = true;
-                    break;
-                }
-            }
+            boolean matchesKnownPath = startsWithKnownRestBasePath(path);
             if (!matchesKnownPath) {
                 String normalizedPath = path.startsWith("/") ? path.substring(1) : path;
                 for (String prefix : rootProviderPathPrefixes) {
@@ -124,5 +130,14 @@ public class A2ARestVersionRoutingFilter implements ContainerRequestFilter {
         URI requestUri = requestContext.getUriInfo().getRequestUri();
         URI newRequestUri = UriBuilder.fromUri(requestUri).replacePath(baseUri.getPath() + newPath).build();
         requestContext.setRequestUri(baseUri, newRequestUri);
+    }
+
+    private boolean startsWithKnownRestBasePath(String path) {
+        for (String basePath : knownRestBasePaths) {
+            if (!basePath.equals("/") && (path.startsWith(basePath + "/") || path.equals(basePath))) {
+                return true;
+            }
+        }
+        return false;
     }
 }

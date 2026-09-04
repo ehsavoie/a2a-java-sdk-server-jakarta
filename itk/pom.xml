@@ -19,6 +19,13 @@
 
     <properties>
         <central.skipPublishing>true</central.skipPublishing>
+        <!--
+          Single-source location of the canonical .proto files. The a2a-itk
+          repository is fetched at the ref pinned by A2A_ITK_REVISION (see
+          run_itk.sh) into ${project.basedir}/a2a-itk. Override via
+          -Da2a.itk.proto.dir=... when building outside run_itk.sh.
+        -->
+        <a2a.itk.proto.dir>${project.basedir}/a2a-itk/protos</a2a.itk.proto.dir>
     </properties>
 
     <dependencies>
@@ -154,7 +161,6 @@
         <dependency>
             <groupId>org.a2aproject.sdk</groupId>
             <artifactId>a2a-java-sdk-microprofile-config</artifactId>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
 
@@ -164,10 +170,14 @@
             <plugin>
                 <groupId>io.github.ascopes</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
-                <version>4.1.2</version>
+                <version>5.1.8</version>
                 <configuration>
-                    <protoc>4.33.2</protoc>
-                    <isIncrementalCompilationEnabled>false</isIncrementalCompilationEnabled>
+                    <protoc kind="binary-maven">
+                        <version>4.35.0</version>
+                    </protoc>
+                    <sourceDirectories>
+                        <sourceDirectory>${a2a.itk.proto.dir}</sourceDirectory>
+                    </sourceDirectories>
                 </configuration>
                 <executions>
                     <execution>

@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.wildfly.a2a</groupId>
+        <artifactId>a2a-jakarta-tests-multitenancy-parent</artifactId>
+        <version>1.0.0.Final-SNAPSHOT</version>
+    </parent>
+    <artifactId>a2a-jakarta-tests-multitenancy-common</artifactId>
+    <packaging>jar</packaging>
+    <name>WildFly Extras - A2A Jakarta - Multitenancy Tests - Shared Fixtures</name>
+    <dependencies>
+        <dependency>
+            <groupId>org.a2aproject.sdk</groupId>
+            <artifactId>a2a-java-sdk-server-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.a2aproject.sdk</groupId>
+            <artifactId>a2a-java-sdk-spec</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.a2aproject.sdk</groupId>
+            <artifactId>a2a-java-extras-multitenancy</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.inject</groupId>
+            <artifactId>jakarta.inject-api</artifactId>
+        </dependency>
+    </dependencies>
+</project>

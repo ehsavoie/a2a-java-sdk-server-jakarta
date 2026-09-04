@@ -17,12 +17,14 @@ import org.a2aproject.sdk.client.transport.rest.RestTransport;
 import org.a2aproject.sdk.client.transport.rest.RestTransportConfigBuilder;
 import org.a2aproject.sdk.client.transport.spi.ClientTransport;
 import org.a2aproject.sdk.client.transport.spi.interceptors.auth.AuthInterceptor;
+import org.a2aproject.sdk.common.A2AHeaders;
 import org.a2aproject.sdk.grpc.utils.JSONRPCUtils;
 import org.a2aproject.sdk.integrations.microprofile.MicroProfileConfigProvider;
 import org.a2aproject.sdk.jsonrpc.common.json.JsonUtil;
 import org.a2aproject.sdk.server.PublicAgentCard;
 import org.a2aproject.sdk.server.apps.common.AbstractA2AServerTest;
 import org.a2aproject.sdk.server.apps.common.AbstractA2AServerWithAuthTest;
+import org.a2aproject.sdk.spec.AgentInterface;
 import org.a2aproject.sdk.spec.Event;
 import org.a2aproject.sdk.spec.TransportProtocol;
 import org.a2aproject.sdk.transport.rest.handler.RestHandler;
@@ -118,6 +120,7 @@ public class JakartaA2AServerWithAuthTest extends AbstractA2AServerWithAuthTest 
     public void testBasicAuthWorksViaHttp() throws Exception {
         saveTaskInTaskStore(MINIMAL_TASK);
         givenAuthenticated()
+                .header(A2AHeaders.A2A_VERSION, AgentInterface.CURRENT_PROTOCOL_VERSION)
                 .get("/tasks/" + MINIMAL_TASK.id())
                 .then()
                 .statusCode(200);

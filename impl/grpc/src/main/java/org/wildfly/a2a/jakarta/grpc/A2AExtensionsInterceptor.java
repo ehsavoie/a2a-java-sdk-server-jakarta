@@ -3,8 +3,10 @@ package org.wildfly.a2a.jakarta.grpc;
 import org.a2aproject.sdk.common.A2AHeaders;
 import org.a2aproject.sdk.transport.grpc.context.GrpcContextKeys;
 
+import io.grpc.Attributes;
 import io.grpc.Context;
 import io.grpc.Contexts;
+import io.grpc.Grpc;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
@@ -35,7 +37,8 @@ public class A2AExtensionsInterceptor implements ServerInterceptor {
                 .withValue(GrpcContextKeys.METADATA_KEY, metadata)
                 .withValue(GrpcContextKeys.GRPC_METHOD_NAME_KEY, call.getMethodDescriptor().getFullMethodName())
                 .withValue(GrpcContextKeys.METHOD_NAME_KEY,
-                        GrpcContextKeys.METHOD_MAPPING.get(call.getMethodDescriptor().getBareMethodName()));
+                        GrpcContextKeys.METHOD_MAPPING.get(call.getMethodDescriptor().getBareMethodName()))
+                .withValue(GrpcContextKeys.PEER_INFO_KEY, getPeerInfo(call));
 
         if (version != null) {
             context = context.withValue(GrpcContextKeys.VERSION_HEADER_KEY, version);
@@ -45,5 +48,14 @@ public class A2AExtensionsInterceptor implements ServerInterceptor {
         }
 
         return Contexts.interceptCall(context, call, metadata, next);
+    }
+
+    private String getPeerInfo(ServerCall<?, ?> serverCall) {
+        try {
+            Object remoteAddr = serverCall.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR);
+            return remoteAddr != null ? remoteAddr.toString() : "unknown";
+        } catch (Exception e) {
+            return "unknown";
+        }
     }
 }

@@ -43,6 +43,10 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
+            <groupId>org.a2aproject.sdk</groupId>
+            <artifactId>a2a-java-extras-multitenancy</artifactId>
+        </dependency>
+        <dependency>
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
             <scope>provided</scope>

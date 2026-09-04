@@ -53,7 +53,6 @@
         <dependency>
             <groupId>org.a2aproject.sdk</groupId>
             <artifactId>a2a-java-sdk-microprofile-config</artifactId>
-            <scope>provided</scope>
         </dependency>
         <!--
             Exclude v1.0 gRPC proto stubs from the WAR. They are pulled in transitively

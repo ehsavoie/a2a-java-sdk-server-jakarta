@@ -1,7 +1,19 @@
 package org.wildfly.a2a.jakarta.rest;
 
 import static org.a2aproject.sdk.server.ServerCallContext.TRANSPORT_KEY;
+import static org.a2aproject.sdk.spec.A2AMethods.CANCEL_TASK_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.DELETE_TASK_PUSH_NOTIFICATION_CONFIG_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.GET_EXTENDED_AGENT_CARD_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.GET_TASK_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.GET_TASK_PUSH_NOTIFICATION_CONFIG_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.LIST_TASK_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.LIST_TASK_PUSH_NOTIFICATION_CONFIG_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.SEND_MESSAGE_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.SEND_STREAMING_MESSAGE_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.SET_TASK_PUSH_NOTIFICATION_CONFIG_METHOD;
+import static org.a2aproject.sdk.spec.A2AMethods.SUBSCRIBE_TO_TASK_METHOD;
 import static org.a2aproject.sdk.transport.rest.context.RestContextKeys.HEADERS_KEY;
+import static org.a2aproject.sdk.transport.rest.context.RestContextKeys.METHOD_NAME_KEY;
 import static org.a2aproject.sdk.transport.rest.context.RestContextKeys.TENANT_KEY;
 import static jakarta.ws.rs.core.HttpHeaders.CONTENT_TYPE;
 
@@ -26,7 +38,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 
 import org.a2aproject.sdk.common.A2AHeaders;
+import org.wildfly.a2a.jakarta.common.A2ARequestAttributes;
 import org.wildfly.a2a.jakarta.common.SSESubscriber;
+import org.wildfly.a2a.jakarta.common.TenantHolder;
 import org.a2aproject.sdk.server.ServerCallContext;
 import org.a2aproject.sdk.server.auth.UnauthenticatedUser;
 import org.a2aproject.sdk.server.auth.User;
@@ -47,23 +61,26 @@ public class A2ARestServerResourceDelegate {
     private static final String STATUS_TIMESTAMP_AFTER = "statusTimestampAfter";
 
     private final RestHandler restHandler;
+    private final TenantHolder tenantHolder;
 
     private static volatile Runnable streamingIsSubscribedRunnable;
 
-    public A2ARestServerResourceDelegate(RestHandler restHandler) {
+    public A2ARestServerResourceDelegate(RestHandler restHandler, TenantHolder tenantHolder) {
         this.restHandler = restHandler;
+        this.tenantHolder = tenantHolder;
     }
 
     @SuppressWarnings("ReturnValueIgnored")
     public Response sendMessage(String body, HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        ServerCallContext context = createCallContext(httpRequest, securityContext, SEND_MESSAGE_METHOD);
         RestHandler.HTTPRestResponse response = null;
         try {
-            response = restHandler.sendMessage(context, extractTenant(httpRequest), body);
+            response = restHandler.sendMessage(context, readTenant(httpRequest), body);
         } catch (A2AError e) {
             response = restHandler.createErrorResponse(e);
         } catch (Throwable t) {
-            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError(t.getMessage()));
+            LOGGER.error("Internal error while processing request", t);
+            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError("Internal error"));
         } finally {
             return Response.status(response.getStatusCode())
                     .header(CONTENT_TYPE, response.getContentType())
@@ -73,11 +90,13 @@ public class A2ARestServerResourceDelegate {
     }
 
     public void sendMessageStreaming(String body, HttpServletRequest httpRequest, HttpServletResponse httpResponse, SecurityContext securityContext) throws IOException {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        LOGGER.info("REST sendMessageStreaming called from {}", httpRequest.getRemoteAddr());
+        ServerCallContext context = createCallContext(httpRequest, securityContext, SEND_STREAMING_MESSAGE_METHOD);
         RestHandler.HTTPRestStreamingResponse streamingResponse = null;
         RestHandler.HTTPRestResponse error = null;
         try {
-            RestHandler.HTTPRestResponse response = restHandler.sendStreamingMessage(context, extractTenant(httpRequest), body);
+            // Streaming path: read the tenant from the @RequestScoped TenantHolder, not the servlet request attribute — the attribute is not reliably visible on the RESTEasy SSE async writer thread (see the Task 2 spike); the holder is re-associated on the async thread within the same request.
+            RestHandler.HTTPRestResponse response = restHandler.sendStreamingMessage(context, tenantHolder.getTenant(), body);
             if (response instanceof RestHandler.HTTPRestStreamingResponse hTTPRestStreamingResponse) {
                 streamingResponse = hTTPRestStreamingResponse;
             } else {
@@ -85,19 +104,23 @@ public class A2ARestServerResourceDelegate {
             }
         } finally {
             if (error != null) {
+                LOGGER.info("REST sendMessageStreaming returning error: status={}", error.getStatusCode());
                 sendErrorResponse(httpResponse, error);
             } else {
                 handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse, context);
+                LOGGER.info("REST sendMessageStreaming SSE stream ended");
             }
         }
     }
 
     public void resubscribeTask(String taskId, HttpServletRequest httpRequest, HttpServletResponse httpResponse, SecurityContext securityContext) throws IOException {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        LOGGER.info("REST resubscribeTask called for taskId={} from {}", taskId, httpRequest.getRemoteAddr());
+        ServerCallContext context = createCallContext(httpRequest, securityContext, SUBSCRIBE_TO_TASK_METHOD);
         RestHandler.HTTPRestStreamingResponse streamingResponse = null;
         RestHandler.HTTPRestResponse error = null;
         try {
-            RestHandler.HTTPRestResponse response = restHandler.subscribeToTask(context, extractTenant(httpRequest), taskId);
+            // Streaming path: read the tenant from the @RequestScoped TenantHolder, not the servlet request attribute — the attribute is not reliably visible on the RESTEasy SSE async writer thread (see the Task 2 spike); the holder is re-associated on the async thread within the same request.
+            RestHandler.HTTPRestResponse response = restHandler.subscribeToTask(context, tenantHolder.getTenant(), taskId);
             if (response instanceof RestHandler.HTTPRestStreamingResponse hTTPRestStreamingResponse) {
                 streamingResponse = hTTPRestStreamingResponse;
             } else {
@@ -105,15 +128,17 @@ public class A2ARestServerResourceDelegate {
             }
         } finally {
             if (error != null) {
+                LOGGER.info("REST resubscribeTask returning error for taskId={}: status={}, body={}", taskId, error.getStatusCode(), error.getBody());
                 sendErrorResponse(httpResponse, error);
             } else {
                 handleCustomSSEResponse(streamingResponse.getPublisher(), httpResponse, context);
+                LOGGER.info("REST resubscribeTask SSE stream ended for taskId={}", taskId);
             }
         }
     }
 
-    public Response getAgentCard() {
-        RestHandler.HTTPRestResponse response = restHandler.getAgentCard();
+    public Response getAgentCard(HttpServletRequest httpRequest) {
+        RestHandler.HTTPRestResponse response = restHandler.getAgentCard(readTenant(httpRequest));
 
         String etag = "\"" + Integer.toHexString(response.getBody().hashCode()) + "\"";
 
@@ -130,8 +155,8 @@ public class A2ARestServerResourceDelegate {
     }
 
     public Response getAuthenticatedExtendedCard(HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
-        RestHandler.HTTPRestResponse response = restHandler.getExtendedAgentCard(context, extractTenant(httpRequest));
+        ServerCallContext context = createCallContext(httpRequest, securityContext, GET_EXTENDED_AGENT_CARD_METHOD);
+        RestHandler.HTTPRestResponse response = restHandler.getExtendedAgentCard(context, readTenant(httpRequest));
         return Response.status(response.getStatusCode())
                 .header(CONTENT_TYPE, response.getContentType())
                 .entity(response.getBody())
@@ -139,8 +164,8 @@ public class A2ARestServerResourceDelegate {
     }
 
     public Response getExtendedAgentCard(HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
-        RestHandler.HTTPRestResponse response = restHandler.getExtendedAgentCard(context, extractTenant(httpRequest));
+        ServerCallContext context = createCallContext(httpRequest, securityContext, GET_EXTENDED_AGENT_CARD_METHOD);
+        RestHandler.HTTPRestResponse response = restHandler.getExtendedAgentCard(context, readTenant(httpRequest));
         return Response.status(response.getStatusCode())
                 .header(CONTENT_TYPE, response.getContentType())
                 .entity(response.getBody())
@@ -149,7 +174,7 @@ public class A2ARestServerResourceDelegate {
 
     @SuppressWarnings("ReturnValueIgnored")
     public Response listTasks(HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        ServerCallContext context = createCallContext(httpRequest, securityContext, LIST_TASK_METHOD);
         RestHandler.HTTPRestResponse response = null;
         try {
             String contextId = httpRequest.getParameter("contextId");
@@ -178,7 +203,7 @@ public class A2ARestServerResourceDelegate {
                 includeArtifacts = Boolean.valueOf(includeArtifactsStr);
             }
 
-            response = restHandler.listTasks(context, extractTenant(httpRequest), contextId, statusStr, pageSize,
+            response = restHandler.listTasks(context, readTenant(httpRequest), contextId, statusStr, pageSize,
                     pageToken, historyLength, statusTimestampAfter, includeArtifacts);
         } catch (NumberFormatException e) {
             response = restHandler.createErrorResponse(new InvalidParamsError("Invalid number format in parameters"));
@@ -187,7 +212,8 @@ public class A2ARestServerResourceDelegate {
         } catch (A2AError e) {
             response = restHandler.createErrorResponse(e);
         } catch (Throwable t) {
-            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError(t.getMessage()));
+            LOGGER.error("Internal error while processing request", t);
+            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError("Internal error"));
         } finally {
             return Response.status(response.getStatusCode())
                     .header(CONTENT_TYPE, response.getContentType())
@@ -198,20 +224,21 @@ public class A2ARestServerResourceDelegate {
 
     @SuppressWarnings("ReturnValueIgnored")
     public Response getTask(String taskId, String historyLengthStr, HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        ServerCallContext context = createCallContext(httpRequest, securityContext, GET_TASK_METHOD);
         RestHandler.HTTPRestResponse response = null;
         try {
             Integer historyLength = null;
             if (historyLengthStr != null && !historyLengthStr.isEmpty()) {
                 historyLength = Integer.valueOf(historyLengthStr);
             }
-            response = restHandler.getTask(context, extractTenant(httpRequest), taskId, historyLength);
+            response = restHandler.getTask(context, readTenant(httpRequest), taskId, historyLength);
         } catch (NumberFormatException e) {
             response = restHandler.createErrorResponse(new InvalidParamsError("bad historyLength"));
         } catch (A2AError e) {
             response = restHandler.createErrorResponse(e);
         } catch (Throwable t) {
-            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError(t.getMessage()));
+            LOGGER.error("Internal error while processing request", t);
+            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError("Internal error"));
         } finally {
             return Response.status(response.getStatusCode())
                     .header(CONTENT_TYPE, response.getContentType())
@@ -222,15 +249,18 @@ public class A2ARestServerResourceDelegate {
 
     @SuppressWarnings("ReturnValueIgnored")
     public Response cancelTask(String taskId, String body, HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        LOGGER.info("REST cancelTask called for taskId={} from {}", taskId, httpRequest.getRemoteAddr());
+        ServerCallContext context = createCallContext(httpRequest, securityContext, CANCEL_TASK_METHOD);
         RestHandler.HTTPRestResponse response = null;
         try {
-            response = restHandler.cancelTask(context, extractTenant(httpRequest), body, taskId);
+            response = restHandler.cancelTask(context, readTenant(httpRequest), body, taskId);
         } catch (A2AError e) {
             response = restHandler.createErrorResponse(e);
         } catch (Throwable t) {
-            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError(t.getMessage()));
+            LOGGER.error("Internal error while processing request", t);
+            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError("Internal error"));
         } finally {
+            LOGGER.info("REST cancelTask response for taskId={}: status={}, body={}", taskId, response.getStatusCode(), response.getBody());
             return Response.status(response.getStatusCode())
                     .header(CONTENT_TYPE, response.getContentType())
                     .entity(response.getBody())
@@ -240,14 +270,15 @@ public class A2ARestServerResourceDelegate {
 
     @SuppressWarnings("ReturnValueIgnored")
     public Response setTaskPushNotificationConfiguration(String taskId, String body, HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        ServerCallContext context = createCallContext(httpRequest, securityContext, SET_TASK_PUSH_NOTIFICATION_CONFIG_METHOD);
         RestHandler.HTTPRestResponse response = null;
         try {
-            response = restHandler.createTaskPushNotificationConfiguration(context, extractTenant(httpRequest), body, taskId);
+            response = restHandler.createTaskPushNotificationConfiguration(context, readTenant(httpRequest), body, taskId);
         } catch (A2AError e) {
             response = restHandler.createErrorResponse(e);
         } catch (Throwable t) {
-            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError(t.getMessage()));
+            LOGGER.error("Internal error while processing request", t);
+            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError("Internal error"));
         } finally {
             return Response.status(response.getStatusCode())
                     .header(CONTENT_TYPE, response.getContentType())
@@ -258,14 +289,21 @@ public class A2ARestServerResourceDelegate {
 
     @SuppressWarnings("ReturnValueIgnored")
     public Response getTaskPushNotificationConfiguration(String taskId, String configId, HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        ServerCallContext context = createCallContext(httpRequest, securityContext, GET_TASK_PUSH_NOTIFICATION_CONFIG_METHOD);
         RestHandler.HTTPRestResponse response = null;
         try {
-            response = restHandler.getTaskPushNotificationConfiguration(context, extractTenant(httpRequest), taskId, configId);
+            if (taskId == null || taskId.isEmpty()) {
+                response = restHandler.createErrorResponse(new InvalidParamsError("bad task id"));
+            } else if (configId == null || configId.isEmpty()) {
+                response = restHandler.createErrorResponse(new InvalidParamsError("bad configuration id"));
+            } else {
+                response = restHandler.getTaskPushNotificationConfiguration(context, readTenant(httpRequest), taskId, configId);
+            }
         } catch (A2AError e) {
             response = restHandler.createErrorResponse(e);
         } catch (Throwable t) {
-            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError(t.getMessage()));
+            LOGGER.error("Internal error while processing request", t);
+            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError("Internal error"));
         } finally {
             return Response.status(response.getStatusCode())
                     .header(CONTENT_TYPE, response.getContentType())
@@ -275,7 +313,7 @@ public class A2ARestServerResourceDelegate {
     }
 
     public Response getOrListTaskPushNotificationConfigurations(String taskId, HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        ServerCallContext context = createCallContext(httpRequest, securityContext, LIST_TASK_PUSH_NOTIFICATION_CONFIG_METHOD);
         RestHandler.HTTPRestResponse response = null;
         try {
             if (taskId == null || taskId.isEmpty()) {
@@ -283,7 +321,7 @@ public class A2ARestServerResourceDelegate {
             } else {
                 String requestURI = httpRequest.getRequestURI();
                 if (requestURI.endsWith("/")) {
-                    response = restHandler.getTaskPushNotificationConfiguration(context, extractTenant(httpRequest),
+                    response = restHandler.getTaskPushNotificationConfiguration(context, readTenant(httpRequest),
                             taskId, null);
                 } else {
                     int pageSize = 0;
@@ -294,7 +332,7 @@ public class A2ARestServerResourceDelegate {
                     if (httpRequest.getParameter(PAGE_TOKEN_PARAM) != null) {
                         pageToken = httpRequest.getParameter(PAGE_TOKEN_PARAM);
                     }
-                    response = restHandler.listTaskPushNotificationConfigurations(context, extractTenant(httpRequest),
+                    response = restHandler.listTaskPushNotificationConfigurations(context, readTenant(httpRequest),
                             taskId, pageSize, pageToken);
                 }
             }
@@ -303,7 +341,8 @@ public class A2ARestServerResourceDelegate {
         } catch (A2AError e) {
             response = restHandler.createErrorResponse(e);
         } catch (Throwable t) {
-            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError(t.getMessage()));
+            LOGGER.error("Internal error while processing request", t);
+            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError("Internal error"));
         }
         return Response.status(response.getStatusCode())
                 .header(CONTENT_TYPE, response.getContentType())
@@ -313,14 +352,15 @@ public class A2ARestServerResourceDelegate {
 
     @SuppressWarnings("ReturnValueIgnored")
     public Response deleteTaskPushNotificationConfiguration(String taskId, String configId, HttpServletRequest httpRequest, SecurityContext securityContext) {
-        ServerCallContext context = createCallContext(httpRequest, securityContext);
+        ServerCallContext context = createCallContext(httpRequest, securityContext, DELETE_TASK_PUSH_NOTIFICATION_CONFIG_METHOD);
         RestHandler.HTTPRestResponse response = null;
         try {
-            response = restHandler.deleteTaskPushNotificationConfiguration(context, extractTenant(httpRequest), taskId, configId);
+            response = restHandler.deleteTaskPushNotificationConfiguration(context, readTenant(httpRequest), taskId, configId);
         } catch (A2AError e) {
             response = restHandler.createErrorResponse(e);
         } catch (Throwable t) {
-            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError(t.getMessage()));
+            LOGGER.error("Internal error while processing request", t);
+            response = restHandler.createErrorResponse(new org.a2aproject.sdk.spec.InternalError("Internal error"));
         } finally {
             return Response.status(response.getStatusCode())
                     .header(CONTENT_TYPE, response.getContentType())
@@ -361,6 +401,10 @@ public class A2ARestServerResourceDelegate {
     }
 
     protected ServerCallContext createCallContext(HttpServletRequest request, SecurityContext securityContext) {
+        return createCallContext(request, securityContext, null);
+    }
+
+    protected ServerCallContext createCallContext(HttpServletRequest request, SecurityContext securityContext, String methodName) {
         User user;
 
         if (securityContext.getUserPrincipal() == null) {
@@ -387,7 +431,10 @@ public class A2ARestServerResourceDelegate {
         }
 
         state.put(HEADERS_KEY, headers);
-        state.put(TENANT_KEY, extractTenant(request));
+        if (methodName != null) {
+            state.put(METHOD_NAME_KEY, methodName);
+        }
+        state.put(TENANT_KEY, readTenant(request));
         state.put(TRANSPORT_KEY, TransportProtocol.HTTP_JSON);
 
         Enumeration<String> en = request.getHeaders(A2AHeaders.A2A_EXTENSIONS);
@@ -400,36 +447,8 @@ public class A2ARestServerResourceDelegate {
         return new ServerCallContext(user, state, requestedExtensions, requestedVersion);
     }
 
-    private String extractTenant(HttpServletRequest request) {
-        String requestURI = request.getRequestURI();
-        if (requestURI == null || requestURI.isBlank()) {
-            return "";
-        }
-
-        if (requestURI.startsWith("/")) {
-            requestURI = requestURI.substring(1);
-        }
-
-        int slashIndex = requestURI.indexOf('/');
-        int colonIndex = requestURI.indexOf(':');
-        String firstSegment;
-
-        if (colonIndex >= 0 && (slashIndex < 0 || colonIndex < slashIndex)) {
-            firstSegment = requestURI.substring(0, colonIndex);
-        } else if (slashIndex > 0) {
-            firstSegment = requestURI.substring(0, slashIndex);
-        } else {
-            firstSegment = requestURI;
-        }
-
-        if (firstSegment.equals("message") ||
-            firstSegment.equals("tasks") ||
-            firstSegment.equals("card") ||
-            firstSegment.equals("extendedAgentCard") ||
-            firstSegment.equals(".well-known")) {
-            return "";
-        }
-
-        return firstSegment;
+    private static String readTenant(HttpServletRequest request) {
+        Object t = request.getAttribute(A2ARequestAttributes.A2A_TENANT_ATTR);
+        return t instanceof String s ? s : "";
     }
 }

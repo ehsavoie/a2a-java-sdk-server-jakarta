@@ -27,5 +27,6 @@
         <module>rest</module>
         <module>compat-0.3</module>
         <module>multiversion</module>
+        <module>multitenancy</module>
     </modules>
 </project>

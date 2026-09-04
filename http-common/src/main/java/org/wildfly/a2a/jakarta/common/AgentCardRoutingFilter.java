@@ -16,7 +16,7 @@ import jakarta.ws.rs.ext.Provider;
 @Priority(50)
 public class AgentCardRoutingFilter implements ContainerRequestFilter {
 
-    private static final String AGENT_CARD_PATH = ".well-known/agent-card.json";
+    private static final String AGENT_CARD_FILE = "agent-card.json";
 
     @Inject
     Instance<A2AVersionProvider> allVersionProviders;
@@ -48,14 +48,18 @@ public class AgentCardRoutingFilter implements ContainerRequestFilter {
         }
 
         String path = requestContext.getUriInfo().getPath().trim();
-        if (!path.endsWith(AGENT_CARD_PATH)) {
+        if (!path.endsWith(AGENT_CARD_FILE)) {
             return;
         }
 
         ensureInitialized();
-
         if (selectedProvider == null) {
             return;
+        }
+
+        String tenant = A2ARequestAttributes.extractWellKnownTenant(path);
+        if (!tenant.isEmpty()) {
+            requestContext.setProperty(A2ARequestAttributes.A2A_TENANT_ATTR, tenant);
         }
 
         String prefix = selectedProvider.getInternalPathPrefix();
@@ -63,7 +67,7 @@ public class AgentCardRoutingFilter implements ContainerRequestFilter {
         if (restBasePath != null && !restBasePath.equals("/")) {
             prefix = prefix + restBasePath;
         }
-        String newPath = prefix + (path.startsWith("/") ? path : "/" + path);
+        String newPath = prefix + "/.well-known/agent-card.json";
 
         URI baseUri = requestContext.getUriInfo().getBaseUri();
         URI requestUri = requestContext.getUriInfo().getRequestUri();

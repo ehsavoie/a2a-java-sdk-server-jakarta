@@ -136,6 +136,8 @@ public class MultiVersion_v0_3_JSONRPCTest extends AbstractA2AServerServerTest_v
         // the bean, causing TaskNotFoundError for unauthenticated requests.
         archive.delete("/WEB-INF/classes/"
                 + TestTaskAuthorizationProvider.class.getName().replace('.', '/') + ".class");
+        archive.addAsResource("META-INF/disable-authorization-microprofile-config.properties",
+                "META-INF/microprofile-config.properties");
 
         archive.toString(true);
         return archive;

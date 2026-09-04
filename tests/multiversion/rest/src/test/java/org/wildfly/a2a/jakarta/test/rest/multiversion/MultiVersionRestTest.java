@@ -145,7 +145,9 @@ public class MultiVersionRestTest extends AbstractA2AServerTest {
                 .addAsManifestResource("META-INF/beans.xml", "beans.xml")
                 .addAsWebInfResource("WEB-INF/web.xml", "web.xml")
                 // Add test properties file for AgentCardProducer
-                .addAsResource("a2a-requesthandler-test.properties");
+                .addAsResource("a2a-requesthandler-test.properties")
+                .addAsResource("META-INF/disable-authorization-microprofile-config.properties",
+                        "META-INF/microprofile-config.properties");
         archive.toString(true);
         return archive;
     }

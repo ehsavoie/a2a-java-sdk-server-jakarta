@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.wildfly.a2a</groupId>
+        <artifactId>a2a-jakarta-tests-parent</artifactId>
+        <version>1.0.0.Final-SNAPSHOT</version>
+    </parent>
+    <artifactId>a2a-jakarta-tests-multitenancy-parent</artifactId>
+    <packaging>pom</packaging>
+    <name>WildFly Extras - A2A Jakarta - Multitenancy Tests</name>
+    <modules>
+        <module>common</module>
+        <module>rest</module>
+        <module>jsonrpc</module>
+    </modules>
+</project>

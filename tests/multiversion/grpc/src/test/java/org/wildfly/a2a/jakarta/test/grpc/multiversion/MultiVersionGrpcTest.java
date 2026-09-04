@@ -169,6 +169,8 @@ public class MultiVersionGrpcTest extends AbstractA2AServerTest {
         // the bean, causing TaskNotFoundError for unauthenticated requests.
         archive.delete("/WEB-INF/classes/"
                 + TestTaskAuthorizationProvider.class.getName().replace('.', '/') + ".class");
+        archive.addAsResource("META-INF/disable-authorization-microprofile-config.properties",
+                "META-INF/microprofile-config.properties");
 
         return archive;
     }

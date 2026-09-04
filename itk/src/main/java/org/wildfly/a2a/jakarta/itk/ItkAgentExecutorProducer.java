@@ -202,7 +202,8 @@ public class ItkAgentExecutorProducer {
         }
 
         private List<String> handleCallAgent(CallAgent call) throws Exception {
-            log.info("Calling agent {} via {}", call.getAgentCardUri(), call.getTransport());
+            log.debug("handleCallAgent: agent={} transport={} streaming={} resubscribe={}",
+                    call.getAgentCardUri(), call.getTransport(), call.getStreaming(), call.hasResubscribe());
             AgentCard remoteCard = A2A.getAgentCard(call.getAgentCardUri());
 
             if (remoteCard.supportedInterfaces().isEmpty()) {
@@ -246,10 +247,16 @@ public class ItkAgentExecutorProducer {
             List<String> responses = Collections.synchronizedList(new ArrayList<>());
 
             clientBuilder.addConsumer((event, card) -> {
+                log.debug("Consumer for {} via {} received event: type={}, terminal={}, resubscribe={}",
+                        call.getAgentCardUri(), call.getTransport(),
+                        event.getClass().getSimpleName(),
+                        isTerminalEvent(event), call.hasResubscribe());
                 List<String> texts = extractTextFromEvent(event);
                 if (call.hasResubscribe()) {
                     String finished = findTaskFinishedText(texts);
                     if (finished != null) {
+                        log.debug("Found task-finished in event from {}, stripped text='{}'",
+                                call.getAgentCardUri(), finished);
                         responses.add(finished);
                         if (!resultFuture.isDone()) {
                             resultFuture.complete(responses);
@@ -259,6 +266,7 @@ public class ItkAgentExecutorProducer {
                 }
                 responses.addAll(texts);
                 if (!resultFuture.isDone() && isTerminalEvent(event)) {
+                    log.debug("Completing future for {} with {} responses", call.getAgentCardUri(), responses.size());
                     resultFuture.complete(responses);
                 }
             });
@@ -272,8 +280,10 @@ public class ItkAgentExecutorProducer {
 
             try (Client client = clientBuilder.build()) {
                 client.sendMessage(wrappedMsg, (TaskPushNotificationConfig) null, null, null);
-                log.info("Received responses from {}", call.getAgentCardUri());
-                return resultFuture.get(TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                List<String> result = resultFuture.get(TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                log.debug("handleCallAgent completed: agent={} transport={} resultCount={}",
+                        call.getAgentCardUri(), call.getTransport(), result.size());
+                return result;
             }
         }
 

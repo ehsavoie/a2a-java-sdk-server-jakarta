@@ -1,0 +1,4 @@
+/subsystem=logging/logger=org.jboss.weld:add(level=DEBUG)
+/subsystem=logging/logger=io.a2a:add(level=DEBUG)
+/subsystem=logging/logger=org.wildfly.a2a.jakarta.common:add(level=DEBUG)
+/subsystem=logging/logger=org.a2aproject.sdk.transport.rest.handler:add(level=DEBUG)

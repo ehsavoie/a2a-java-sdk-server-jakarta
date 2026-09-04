@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Resubscribe Test - Non-JSONRPC Protocols",
+      "sdks": ["current", "go_v10"],
+      "edges": ["0->1", "1->0"],
+      "protocols": ["grpc", "http_json"],
+      "streaming": true,
+      "behavior": "resubscribe"
+    }
+  ]
+}

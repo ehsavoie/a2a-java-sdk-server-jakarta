@@ -37,8 +37,8 @@ public class A2AServerResource {
     @GET
     @Path(".well-known/agent-card.json")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response getAgentCard() {
-        return getDelegate().getAgentCard();
+    public Response getAgentCard(@Context HttpServletRequest httpRequest) {
+        return getDelegate().getAgentCard(httpRequest);
     }
 
     @POST

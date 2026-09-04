@@ -6,11 +6,13 @@ import jakarta.annotation.PreDestroy;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.context.Initialized;
 import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.Instance;
 import jakarta.inject.Inject;
 
 import org.a2aproject.sdk.server.ExtendedAgentCard;
 import org.a2aproject.sdk.server.PublicAgentCard;
+import org.a2aproject.sdk.server.multitenancy.AgentCardRouter;
 import org.a2aproject.sdk.server.requesthandlers.RequestHandler;
 import org.a2aproject.sdk.server.util.async.Internal;
 import org.a2aproject.sdk.spec.AgentCard;
@@ -44,6 +46,10 @@ public class GrpcBeanInitializer {
     @Internal
     Executor executor;
 
+    @Inject
+    @Any
+    Instance<AgentCardRouter> agentCardRouter;
+
     /**
      * Observes the application startup event to eagerly initialize the gRPC cache.
      */
@@ -67,7 +73,8 @@ public class GrpcBeanInitializer {
                 // ClientBuilder not in deployment, ignore
             }
 
-            WildFlyGrpcHandler.setStaticBeans(agentCard, extCard, requestHandler, ccf, executor, deploymentClassLoader);
+            AgentCardRouter router = agentCardRouter.isResolvable() ? agentCardRouter.get() : null;
+            WildFlyGrpcHandler.setStaticBeans(agentCard, extCard, requestHandler, ccf, executor, deploymentClassLoader, router);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -75,6 +82,6 @@ public class GrpcBeanInitializer {
 
     @PreDestroy
     public void cleanup() {
-        WildFlyGrpcHandler.setStaticBeans(null, null, null, null, null, null);
+        WildFlyGrpcHandler.setStaticBeans(null, null, null, null, null, null, null);
     }
 }

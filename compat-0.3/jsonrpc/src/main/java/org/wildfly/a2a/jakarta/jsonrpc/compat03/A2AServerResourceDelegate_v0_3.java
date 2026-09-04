@@ -346,7 +346,11 @@ public class A2AServerResourceDelegate_v0_3 {
             public void onSubscribe(Flow.Subscription subscription) {
                 LOGGER.debug("Custom SSE subscriber onSubscribe called");
                 this.subscription = subscription;
-                subscription.request(1);
+                // Request all events upfront (mirrors the a2a-java reference SseResponseWriter, see
+                // a2a-java #906): a single-item demand window drops back-to-back emissions from the
+                // EventConsumer. EventConsumer.BUFFER_FLUSH_DELAY_MS guarantees the final write is
+                // flushed before onComplete fires, so write-level backpressure is not needed.
+                subscription.request(Long.MAX_VALUE);
 
                 Runnable runnable = streamingIsSubscribedRunnable;
                 if (runnable != null) {
@@ -371,7 +375,6 @@ public class A2AServerResourceDelegate_v0_3 {
                     }
 
                     LOGGER.debug("Custom SSE event sent successfully with id: {}", id);
-                    subscription.request(1);
                 } catch (Exception e) {
                     LOGGER.error("Error writing SSE event: {}", e.getMessage(), e);
                     onError(e);

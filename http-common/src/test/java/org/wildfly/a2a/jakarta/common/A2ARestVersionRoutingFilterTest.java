@@ -34,6 +34,9 @@ class A2ARestVersionRoutingFilterTest {
     @Mock
     Instance<A2AVersionProvider> allVersionProviders;
 
+    @Mock
+    TenantHolder tenantHolder;
+
     @InjectMocks
     A2ARestVersionRoutingFilter filter;
 
@@ -150,6 +153,29 @@ class A2ARestVersionRoutingFilterTest {
 
         filter.filter(ctx);
 
+        verify(ctx).abortWith(any(Response.class));
+    }
+
+    @Test
+    void knownRestBasePath_isNotTreatedAsTenant() throws IOException {
+        // Regression test for commit 48aa443: A2ARestVersionRoutingFilter extracted the tenant before
+        // checking known versioned REST base paths, so /v1/... (v0.3 REST base) had its /v1 segment
+        // mistakenly stripped as a tenant, breaking all compat-0.3 REST routing.
+        setupProvider(
+                TestProviders.provider("0.3", false, "/a2a_rest_v0.3", "/v1"),
+                TestProviders.provider("1.0", false, "/a2a_rest_v1.0", "/"));
+
+        ContainerRequestContext ctx = mock(ContainerRequestContext.class);
+        UriInfo uriInfo = mock(UriInfo.class);
+        when(ctx.getUriInfo()).thenReturn(uriInfo);
+        when(uriInfo.getPath()).thenReturn("/v1/tasks/abc");
+        when(ctx.getHeaderString(A2AHeaders.A2A_VERSION)).thenReturn(null);
+
+        filter.filter(ctx);
+
+        // /v1 is a version base path, not a tenant — tenantHolder must not be called with it
+        verify(tenantHolder, never()).setTenant(any());
+        // Routing proceeded (matched known base path /v1); aborts 400 because no default in this setup
         verify(ctx).abortWith(any(Response.class));
     }
 }

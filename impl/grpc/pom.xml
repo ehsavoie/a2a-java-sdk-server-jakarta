@@ -49,5 +49,11 @@
             <version>${version.sdk}</version>
             <scope>provided</scope>
         </dependency>
+
+        <!-- A2A multitenancy support -->
+        <dependency>
+            <groupId>org.a2aproject.sdk</groupId>
+            <artifactId>a2a-java-extras-multitenancy</artifactId>
+        </dependency>
     </dependencies>
 </project>

@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 import org.a2aproject.sdk.jsonrpc.common.wrappers.ListTasksResult;
 import org.a2aproject.sdk.server.ServerCallContext;
 import org.a2aproject.sdk.server.auth.TaskOperation;
+import org.a2aproject.sdk.server.multitenancy.AgentCardRouter;
 import org.a2aproject.sdk.server.requesthandlers.RequestHandler;
 import org.a2aproject.sdk.spec.A2AError;
 import org.a2aproject.sdk.spec.AgentCard;
@@ -44,6 +45,7 @@ public class WildFlyGrpcHandler extends GrpcHandler {
     private static volatile CallContextFactory staticCallContextFactory;
     private static volatile Executor staticExecutor;
     private static volatile ClassLoader deploymentClassLoader;
+    private static volatile AgentCardRouter staticAgentCardRouter;
 
     public WildFlyGrpcHandler() {
         // Default constructor - the only one used by WildFly gRPC subsystem
@@ -53,13 +55,21 @@ public class WildFlyGrpcHandler extends GrpcHandler {
      * Called by GrpcBeanInitializer during CDI initialization to cache beans
      * for use by gRPC threads where CDI is not available.
      */
-    static void setStaticBeans(AgentCard agentCard, AgentCard extendedAgentCard, RequestHandler requestHandler, CallContextFactory callContextFactory, Executor executor, ClassLoader classLoader) {
+    static void setStaticBeans(AgentCard agentCard, AgentCard extendedAgentCard, RequestHandler requestHandler,
+            CallContextFactory callContextFactory, Executor executor, ClassLoader classLoader,
+            AgentCardRouter agentCardRouter) {
         staticAgentCard = agentCard;
         staticExtendedAgentCard = extendedAgentCard;
         staticRequestHandler = requestHandler;
         staticCallContextFactory = callContextFactory;
         staticExecutor = executor;
         deploymentClassLoader = classLoader;
+        staticAgentCardRouter = agentCardRouter;
+    }
+
+    @Override
+    protected AgentCardRouter getAgentCardRouter() {
+        return staticAgentCardRouter; // may be null when multitenancy is not deployed
     }
 
     @Override
