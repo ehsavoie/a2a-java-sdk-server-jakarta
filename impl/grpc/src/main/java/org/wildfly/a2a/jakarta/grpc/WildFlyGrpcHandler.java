@@ -26,6 +26,7 @@ import org.a2aproject.sdk.spec.TaskPushNotificationConfig;
 import org.a2aproject.sdk.spec.TaskQueryParams;
 import org.a2aproject.sdk.transport.grpc.handler.CallContextFactory;
 import org.a2aproject.sdk.transport.grpc.handler.GrpcHandler;
+import org.jspecify.annotations.Nullable;
 
 /**
  * WildFly gRPC Handler that uses static cache for CDI beans.
@@ -84,11 +85,11 @@ public class WildFlyGrpcHandler extends GrpcHandler {
     }
 
     @Override
-    protected AgentCard getAgentCard() {
+    protected @Nullable AgentCard getAgentCard() {
         if (staticAgentCard == null && staticAgentCardRouter != null) {
             staticAgentCard = staticAgentCardRouter.resolvePublicCard(null);
         }
-        if (staticAgentCard == null) {
+        if (staticAgentCard == null && staticAgentCardRouter == null) {
             throw new RuntimeException("AgentCard not available. ApplicationStartup may not have run yet.");
         }
         return staticAgentCard;

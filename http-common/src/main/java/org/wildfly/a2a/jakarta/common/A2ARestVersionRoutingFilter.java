@@ -84,9 +84,8 @@ public class A2ARestVersionRoutingFilter implements ContainerRequestFilter {
         }
 
         String tenant = A2ARequestAttributes.extractTenant(path);
-        if (!tenant.isEmpty() && !startsWithKnownRestBasePath(path)) {
-            requestContext.setProperty(A2ARequestAttributes.A2A_TENANT_ATTR, tenant);
-            tenantHolder.setTenant(tenant);
+        boolean hasTenantPrefix = !tenant.isEmpty() && !startsWithKnownRestBasePath(path);
+        if (hasTenantPrefix) {
             String stripped = path.startsWith("/") ? path.substring(1) : path;   // "acme/message:send"
             stripped = stripped.substring(tenant.length());                      // "/message:send" (or "")
             path = stripped.isEmpty() ? "/" : stripped;                          // normalize
@@ -106,6 +105,10 @@ public class A2ARestVersionRoutingFilter implements ContainerRequestFilter {
         }
         if (!matchesKnownPath) {
             return;
+        }
+        if (hasTenantPrefix) {
+            requestContext.setProperty(A2ARequestAttributes.A2A_TENANT_ATTR, tenant);
+            tenantHolder.setTenant(tenant);
         }
 
         A2AVersionProvider provider = versionResolver.resolve(versionHeader);

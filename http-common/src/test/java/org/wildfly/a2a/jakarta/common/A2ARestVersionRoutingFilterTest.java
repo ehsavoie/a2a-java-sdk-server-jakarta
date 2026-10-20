@@ -156,6 +156,8 @@ class A2ARestVersionRoutingFilterTest {
 
         verify(ctx, never()).setRequestUri(any(), any());
         verify(ctx, never()).abortWith(any());
+        verify(ctx, never()).setProperty(any(), any());
+        verify(tenantHolder, never()).setTenant(any());
     }
 
     @Test
